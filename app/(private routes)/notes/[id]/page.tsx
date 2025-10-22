@@ -1,54 +1,52 @@
-// app/(private routes)/notes/[id]/page.tsx
 import type { Metadata } from 'next';
-import { HydrationBoundary, dehydrate } from '@tanstack/react-query';
-import { QueryClient } from '@tanstack/react-query';
-import NoteDetails from './NoteDetails.client';
+import { QueryClient, dehydrate } from '@tanstack/react-query';
+import { HydrationBoundary } from '@tanstack/react-query';
 import { sFetchNoteById } from '@/lib/api/serverApi';
+import NoteDetails from './NoteDetails.client';
 
-type PageProps = {
-  params: { id: string };
-};
+const SITE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
-// ✅ generateMetadata можна залишити async, але params — НЕ Promise
 export async function generateMetadata(
-  { params }: PageProps
+  { params }: { params: { id: string } }
 ): Promise<Metadata> {
-  const { id } = params;
-
   try {
-    const note = await sFetchNoteById(id);
+    const note = await sFetchNoteById(params.id);
+    const title = note ? `${note.title} — Note` : 'Note — Not found';
+    const description = note
+      ? (note.content?.slice(0, 120) || 'Note details')
+      : 'The note was not found.';
+
     return {
-      title: `${note.title} — NoteHub`,
-      description: note.content?.slice(0, 120) ?? 'Note details',
+      title,
+      description,
       openGraph: {
-        title: `${note.title} — NoteHub`,
-        description: note.content?.slice(0, 120) ?? 'Note details',
-        url: `/notes/${id}`,
+        title,
+        description,
+        url: `${SITE_URL}/notes/${params.id}`,
         images: ['https://ac.goit.global/fullstack/react/notehub-og-meta.jpg'],
       },
     };
   } catch {
     return {
-      title: 'Note — NoteHub',
-      description: 'Note details',
+      title: 'Note — Error',
+      description: 'Failed to load note.',
       openGraph: {
-        title: 'Note — NoteHub',
-        description: 'Note details',
-        url: `/notes/${id}`,
+        title: 'Note — Error',
+        description: 'Failed to load note.',
+        url: `${SITE_URL}/notes/${params.id}`,
         images: ['https://ac.goit.global/fullstack/react/notehub-og-meta.jpg'],
       },
     };
   }
 }
 
-// ✅ ГОЛОВНЕ ВИПРАВЛЕННЯ: тут теж params — НЕ Promise
-export default async function NotePage({ params }: PageProps) {
-  const { id } = params;
-
+export default async function Page(
+  { params }: { params: { id: string } }
+) {
   const qc = new QueryClient();
   await qc.prefetchQuery({
-    queryKey: ['note', id],
-    queryFn: () => sFetchNoteById(id),
+    queryKey: ['note', params.id],
+    queryFn: () => sFetchNoteById(params.id),
   });
 
   return (
