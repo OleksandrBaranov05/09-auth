@@ -1,44 +1,47 @@
-// app/(private routes)/notes/filter/[...slug]/page.tsx
 import type { Metadata } from 'next';
-import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query';
-import { sFetchNotes } from '@/lib/api/serverApi';
+import { HydrationBoundary, dehydrate } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
 import NotesClient from './Notes.client';
+import { sFetchNotes } from '@/lib/api/serverApi';
+
+const SITE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 export async function generateMetadata(
   props: Promise<{ params: { slug?: string[] } }>
 ): Promise<Metadata> {
   const { params } = await props;
   const tag = params.slug?.[0] ?? 'All';
+
+  const title = `Notes — ${tag}`;
+  const description = `Browse notes filtered by tag: ${tag}.`;
+
   return {
-    title: `Notes — ${tag}`,
-    description: `Browse notes filtered by ${tag}`,
+    title,
+    description,
     openGraph: {
-      title: `Notes — ${tag}`,
-      description: `Browse notes filtered by ${tag}`,
-      url: `/notes/filter/${tag}`,
+      title,
+      description,
+      url: `${SITE_URL}/notes/filter/${tag}`,
       images: ['https://ac.goit.global/fullstack/react/notehub-og-meta.jpg'],
     },
   };
 }
 
-export default async function NotesPage(
-  props: Promise<{ params: { slug?: string[] } }>
+
+export default async function Page(
+  { params }: { params: { slug?: string[] } }
 ) {
-  const { params } = await props;
   const tag = params.slug?.[0] ?? 'All';
 
-  const qc = new QueryClient();
-  const page = 1;
-  const perPage = 12;
-  const search = '';
-
-  await qc.prefetchQuery({
-    queryKey: ['notes', page, search, tag],
-    queryFn: () => sFetchNotes({ page, perPage, search, tag }),
+  // SSR-prefetch через React Query
+  const queryClient = new QueryClient();
+  await queryClient.prefetchQuery({
+    queryKey: ['notes', { page: 1, search: '', tag }],
+    queryFn: () => sFetchNotes({ page: 1, perPage: 12, tag }),
   });
 
   return (
-    <HydrationBoundary state={dehydrate(qc)}>
+    <HydrationBoundary state={dehydrate(queryClient)}>
       <NotesClient tag={tag} />
     </HydrationBoundary>
   );
