@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
-import { fetchNoteById } from '@/lib/api';
+import { fetchNoteById } from '@/lib/api/clientApi';
 
-const SITE_URL = 'https://notehub.app'; // заміни на свій
+const SITE_URL = 'https://notehub.app';
 
 export async function generateMetadata({
   params,

@@ -1,36 +1,27 @@
-import { NextResponse, NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-const PRIVATE_PREFIXES = ['/notes', '/profile'];
-const AUTH_PREFIXES = ['/sign-in', '/sign-up'];
+export function middleware(request: NextRequest) {
+  const token = request.cookies.get('notehub_token')?.value;
 
-const TOKEN_COOKIE = 'accessToken';
+  const isAuthRoute = request.nextUrl.pathname.startsWith('/sign-in') || 
+                      request.nextUrl.pathname.startsWith('/sign-up');
 
-export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-  const isPrivate = PRIVATE_PREFIXES.some((p) => pathname.startsWith(p));
-  const isAuthPage = AUTH_PREFIXES.some((p) => pathname.startsWith(p));
-  const isAuthed = req.cookies.has(TOKEN_COOKIE);
+  const isPrivateRoute = request.nextUrl.pathname.startsWith('/profile') || 
+                         request.nextUrl.pathname.startsWith('/notes');
 
-  if (isPrivate && !isAuthed) {
-    const url = req.nextUrl.clone();
-    url.pathname = '/sign-in';
-    return NextResponse.redirect(url);
+  if (isPrivateRoute && !token) {
+    return NextResponse.redirect(new URL('/sign-in', request.url));
   }
 
-  if (isAuthPage && isAuthed) {
-    const url = req.nextUrl.clone();
-    url.pathname = '/profile';
-    return NextResponse.redirect(url);
+ 
+  if (isAuthRoute && token) {
+    return NextResponse.redirect(new URL('/notes', request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    '/profile/:path*',
-    '/notes/:path*',
-    '/sign-in',
-    '/sign-up',
-  ],
+  matcher: ['/profile/:path*', '/notes/:path*', '/sign-in', '/sign-up'],
 };

@@ -1,52 +1,40 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import { checkSession, logout } from '@/lib/api/clientApi';
+import { useRouter, usePathname } from 'next/navigation';
+import { checkSession } from '@/lib/api/clientApi';
 import { useAuthStore } from '@/lib/store/authStore';
 
-const PRIVATE_PREFIXES = ['/notes', '/profile'];
-const AUTH_PREFIXES = ['/sign-in', '/sign-up'];
-
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
-  const { setUser, clearIsAuthenticated } = useAuthStore();
-  const [checking, setChecking] = useState(true);
+  const { setUser, clearIsAuthenticated, isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    let mounted = true;
-
-    (async () => {
+    const verify = async () => {
       try {
         const user = await checkSession();
         if (user) {
           setUser(user);
-
-          if (AUTH_PREFIXES.some((p) => pathname.startsWith(p))) {
-            router.replace('/profile');
-          }
         } else {
-        
-          if (PRIVATE_PREFIXES.some((p) => pathname.startsWith(p))) {
-            clearIsAuthenticated();
-            await logout().catch(() => {});
-            router.replace('/sign-in');
-          } else {
-            clearIsAuthenticated();
+          clearIsAuthenticated();
+          if (pathname.startsWith('/notes') || pathname.startsWith('/profile')) {
+            router.push('/sign-in');
           }
         }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        clearIsAuthenticated();
       } finally {
-        if (mounted) setChecking(false);
+        setLoading(false);
       }
-    })();
-
-    return () => {
-      mounted = false;
     };
+
+    verify();
   }, [pathname, router, setUser, clearIsAuthenticated]);
 
-  if (checking) return <p style={{ padding: 16 }}>Checking session...</p>;
+  if (loading) return <p style={{ textAlign: 'center', marginTop: '2rem' }}>Loading...</p>;
 
   return <>{children}</>;
 }
