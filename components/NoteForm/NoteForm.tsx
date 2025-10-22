@@ -1,7 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FormEvent, useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createNote } from '@/lib/api/clientApi';
 import type { NoteTag } from '@/types/note';
@@ -10,68 +10,55 @@ import css from './NoteForm.module.css';
 
 const TAGS: NoteTag[] = ['Todo', 'Work', 'Personal', 'Meeting', 'Shopping'];
 
-export interface NoteFormProps {
-  onCancel?: () => void;
-}
-
-export default function NoteForm({ onCancel }: NoteFormProps) {
+export default function NoteForm() {
   const router = useRouter();
   const qc = useQueryClient();
 
- 
   const draft = useNoteStore((s) => s.draft);
   const setDraft = useNoteStore((s) => s.setDraft);
   const clearDraft = useNoteStore((s) => s.clearDraft);
 
-  
   const [title, setTitle] = useState(draft.title);
   const [content, setContent] = useState(draft.content);
-  const [tag, setTag] = useState<NoteTag>(draft.tag);
+  const [tag, setTag] = useState<NoteTag>(draft.tag as NoteTag);
 
-
-  const [submitted, setSubmitted] = useState(false);
-
+  // Ініціалізувати з draft лише один раз (не підписуємось на зміни draft)
   useEffect(() => {
-    setDraft({ title, content, tag });
-  }, [title, content, tag, setDraft]);
+    setTitle(draft.title);
+    setContent(draft.content);
+    setTag(draft.tag as NoteTag);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // ← важливо!
 
-  const mutation = useMutation({
+  const mutate = useMutation({
     mutationFn: createNote,
     onSuccess: () => {
-      clearDraft();
       qc.invalidateQueries({ queryKey: ['notes'] });
+      clearDraft();
       router.back();
     },
   });
 
-  function handleSubmit(e: FormEvent) {
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSubmitted(true);
+    mutate.mutate({ title, content, tag });
+  };
 
-    const t = title.trim();
-    const c = content.trim();
-
-    if (!t || !c) return;
-
-    mutation.mutate({ title: t, content: c, tag });
-  }
-
+  // оновлюємо draft лише у onChange — жодних ефектів, щоб не зациклити
   return (
-    <form className={css.form} onSubmit={handleSubmit} noValidate>
+    <form className={css.form} onSubmit={onSubmit}>
       <div className={css.formGroup}>
         <label htmlFor="title">Title</label>
         <input
           id="title"
           className={css.input}
-          type="text"
-          placeholder="Enter title…"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          aria-invalid={submitted && !title.trim() ? 'true' : 'false'}
+          onChange={(e) => {
+            const v = e.target.value;
+            setTitle(v);
+            setDraft({ title: v });
+          }}
         />
-        {submitted && !title.trim() && (
-          <span className={css.error}>Title is required</span>
-        )}
       </div>
 
       <div className={css.formGroup}>
@@ -79,14 +66,13 @@ export default function NoteForm({ onCancel }: NoteFormProps) {
         <textarea
           id="content"
           className={css.textarea}
-          placeholder="Write your note…"
           value={content}
-          onChange={(e) => setContent(e.target.value)}
-          aria-invalid={submitted && !content.trim() ? 'true' : 'false'}
+          onChange={(e) => {
+            const v = e.target.value;
+            setContent(v);
+            setDraft({ content: v });
+          }}
         />
-        {submitted && !content.trim() && (
-          <span className={css.error}>Content is required</span>
-        )}
       </div>
 
       <div className={css.formGroup}>
@@ -95,7 +81,11 @@ export default function NoteForm({ onCancel }: NoteFormProps) {
           id="tag"
           className={css.select}
           value={tag}
-          onChange={(e) => setTag(e.target.value as NoteTag)}
+          onChange={(e) => {
+            const v = e.target.value as NoteTag;
+            setTag(v);
+            setDraft({ tag: v });
+          }}
         >
           {TAGS.map((t) => (
             <option key={t} value={t}>
@@ -106,19 +96,10 @@ export default function NoteForm({ onCancel }: NoteFormProps) {
       </div>
 
       <div className={css.actions}>
-        <button
-          type="submit"
-          className={css.submitButton}
-          disabled={mutation.isPending}
-        >
-          {mutation.isPending ? 'Creating…' : 'Create'}
+        <button type="submit" className={css.submitButton} disabled={mutate.isPending}>
+          Create
         </button>
-
-        <button
-          type="button"
-          className={css.cancelButton}
-          onClick={() => (onCancel ? onCancel() : router.back())}
-        >
+        <button type="button" className={css.cancelButton} onClick={() => router.back()}>
           Cancel
         </button>
       </div>

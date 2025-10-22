@@ -1,43 +1,40 @@
+// app/(private routes)/notes/filter/[...slug]/page.tsx
 import type { Metadata } from 'next';
 import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query';
-import { fetchNotes } from '@/lib/api/clientApi';
+import { sFetchNotes } from '@/lib/api/serverApi';
 import NotesClient from './Notes.client';
 
-const OG_IMAGE = 'https://ac.goit.global/fullstack/react/notehub-og-meta.jpg';
-
 export async function generateMetadata(
-  { params }: { params: { slug?: string[] } }
+  props: Promise<{ params: { slug?: string[] } }>
 ): Promise<Metadata> {
+  const { params } = await props;
   const tag = params.slug?.[0] ?? 'All';
-
   return {
-    title: `Notes – ${tag}`,
-    description: `List of notes filtered by ${tag}.`,
+    title: `Notes — ${tag}`,
+    description: `Browse notes filtered by ${tag}`,
     openGraph: {
-      title: `Notes – ${tag}`,
-      description: `List of notes filtered by ${tag}.`,
+      title: `Notes — ${tag}`,
+      description: `Browse notes filtered by ${tag}`,
       url: `/notes/filter/${tag}`,
-      images: [OG_IMAGE],
+      images: ['https://ac.goit.global/fullstack/react/notehub-og-meta.jpg'],
     },
   };
 }
 
-export default async function Page({
-  params,
-}: {
-  params: { slug?: string[] };
-}) {
+export default async function NotesPage(
+  props: Promise<{ params: { slug?: string[] } }>
+) {
+  const { params } = await props;
   const tag = params.slug?.[0] ?? 'All';
 
   const qc = new QueryClient();
+  const page = 1;
+  const perPage = 12;
+  const search = '';
+
   await qc.prefetchQuery({
-    queryKey: ['notes', 1, '', tag],
-    queryFn: () =>
-      fetchNotes({
-        page: 1,
-        perPage: 12,
-        tag: tag !== 'All' ? tag : undefined,
-      }),
+    queryKey: ['notes', page, search, tag],
+    queryFn: () => sFetchNotes({ page, perPage, search, tag }),
   });
 
   return (

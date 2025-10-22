@@ -1,58 +1,88 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { checkSession, logout } from '@/lib/api/clientApi';
 import { useAuthStore } from '@/lib/store/authStore';
-import { usePathname, useRouter } from 'next/navigation';
 
 const PRIVATE_PREFIXES = ['/notes', '/profile'];
-const PUBLIC_AUTH_PAGES = ['/sign-in', '/sign-up'];
+const AUTH_PREFIXES = ['/sign-in', '/sign-up'];
+
+function isPrivatePath(pathname: string) {
+  return PRIVATE_PREFIXES.some((p) => pathname.startsWith(p));
+}
+
+function isAuthPath(pathname: string) {
+  return AUTH_PREFIXES.some((p) => pathname.startsWith(p));
+}
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [checking, setChecking] = useState(true);
-  const setUser = useAuthStore((s) => s.setUser);
-  const clearIsAuthenticated = useAuthStore((s) => s.clearIsAuthenticated);
   const router = useRouter();
   const pathname = usePathname();
 
+  const { user, isAuthenticated, setUser, setIsAuthenticated, clearAuth } = useAuthStore();
+
+  const [checking, setChecking] = useState(true);
+  const redirectedRef = useRef(false);
+  const checkedOnceRef = useRef(false);
+
+  // 1) Одноразова перевірка сесії при монтуванні
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
+
     (async () => {
       try {
-        const user = await checkSession();
-        if (user) {
-          if (!isMounted) return;
-          setUser(user);
+        const me = await checkSession(); // вертає User або null
+        if (!mounted) return;
 
-          // якщо ми на /sign-in | /sign-up і вже залогінені — в профіль
-          if (PUBLIC_AUTH_PAGES.includes(pathname)) {
-            router.replace('/profile');
-          }
+        if (me) {
+          setUser(me);
+          setIsAuthenticated(true);
         } else {
-          if (!isMounted) return;
-          clearIsAuthenticated();
-
-          // якщо ми на приватній сторінці — в логін
-          if (PRIVATE_PREFIXES.some((p) => pathname.startsWith(p))) {
-            await logout().catch(() => {});
-            router.replace('/sign-in');
-          }
+          clearAuth();
         }
       } catch {
-        // якщо помилка — вважаємо неавторизований
-        clearIsAuthenticated();
-        if (PRIVATE_PREFIXES.some((p) => pathname.startsWith(p))) {
-          router.replace('/sign-in');
-        }
+        clearAuth();
       } finally {
-        if (isMounted) setChecking(false);
+        if (mounted) {
+          setChecking(false);
+          checkedOnceRef.current = true;
+        }
       }
     })();
 
-    return () => { isMounted = false; };
-  }, [pathname, router, setUser, clearIsAuthenticated]);
+    return () => {
+      mounted = false;
+    };
+    // важливо: стора-функції стабільні (Zustand), `[]` достатньо
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  if (checking) return <p style={{ padding: 16 }}>Checking session...</p>;
+  // 2) Разова навігація після перевірки
+  useEffect(() => {
+    if (checking) return; // дочекайся завершення checkSession
+    if (redirectedRef.current) return; // уже редіректили — не повторюємо
+
+    // Неавторизований і намагається зайти на приватний маршрут?
+    if (!isAuthenticated && isPrivatePath(pathname)) {
+      redirectedRef.current = true;
+      router.replace('/sign-in');
+      return;
+    }
+
+    // Авторизований і зайшов на auth-сторінки?
+    if (isAuthenticated && isAuthPath(pathname)) {
+      redirectedRef.current = true;
+      router.replace('/profile');
+      return;
+    }
+  }, [checking, isAuthenticated, pathname, router]);
+
+  // 3) Нічого не оновлюємо у тілі компоненту! Тільки рендер.
+  // Можеш показувати лоадер поки йде перевірка
+  if (checking && isPrivatePath(pathname)) {
+    return <div style={{ padding: 24 }}>Checking session…</div>;
+  }
 
   return <>{children}</>;
 }

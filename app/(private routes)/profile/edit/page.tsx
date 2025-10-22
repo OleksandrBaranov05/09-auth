@@ -1,27 +1,55 @@
+// app/(private routes)/profile/edit/page.tsx
 'use client';
 
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { updateMe, getMe } from '@/lib/api/clientApi';
+import { getMe, updateMe } from '@/lib/api/clientApi';
+import { useAuthStore } from '@/lib/store/authStore';
 import css from './EditProfilePage.module.css';
 
 export default function EditProfilePage() {
   const router = useRouter();
-  // мінімально: локальний стан
-  const [username, setUsername] = useState('your_username');
-  const [email] = useState('your_email@example.com');
-  const [avatar] = useState('https://ac.goit.global/img/no-user.png');
+  const setUser = useAuthStore((s) => s.setUser);
+
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [avatar, setAvatar] = useState(
+    'https://ac.goit.global/img/no-user.png'
+  );
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const u = await getMe();
+        if (u) {
+          setUsername(u.username || '');
+          setEmail(u.email || '');
+          setAvatar(u.avatar || 'https://ac.goit.global/img/no-user.png');
+        }
+      } catch {
+        // якщо що — повернемо на профіль
+        router.push('/profile');
+      }
+    })();
+  }, [router]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await updateMe({ username });
+      setSaving(true);
+      const updated = await updateMe({ username });
+      // оновимо глобальний стор
+      setUser(updated);
       router.push('/profile');
-    } catch (err) {
-      console.error(err);
-      // можна показати повідомлення
+    } finally {
+      setSaving(false);
     }
+  }
+
+  function onCancel() {
+    router.back();
   }
 
   return (
@@ -52,8 +80,14 @@ export default function EditProfilePage() {
           <p>Email: {email}</p>
 
           <div className={css.actions}>
-            <button type="submit" className={css.saveButton}>Save</button>
-            <button type="button" className={css.cancelButton} onClick={() => router.back()}>
+            <button type="submit" className={css.saveButton} disabled={saving}>
+              Save
+            </button>
+            <button
+              type="button"
+              className={css.cancelButton}
+              onClick={onCancel}
+            >
               Cancel
             </button>
           </div>

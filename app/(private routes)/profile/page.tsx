@@ -1,24 +1,39 @@
+// app/(private routes)/profile/page.tsx
 import type { Metadata } from 'next';
+import Image from 'next/image';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { sGetMe } from '@/lib/api/serverApi';
 import css from './ProfilePage.module.css';
 
 export const metadata: Metadata = {
   title: 'Profile — NoteHub',
-  description: 'User profile page',
+  description: 'Your profile page',
+  openGraph: {
+    title: 'Profile — NoteHub',
+    description: 'Your profile page',
+    url: '/profile',
+    images: ['https://ac.goit.global/fullstack/react/notehub-og-meta.jpg'],
+  },
 };
 
-export default function ProfilePage() {
-  // Поки статичний макет, без реальних даних (ТЗ так дозволяє на старті)
+export default async function ProfilePage() {
+  const user = await sGetMe();
+  if (!user) redirect('/sign-in');
+
   return (
     <main className={css.mainContent}>
       <div className={css.profileCard}>
         <div className={css.header}>
           <h1 className={css.formTitle}>Profile Page</h1>
-          <a href="/profile/edit" className={css.editProfileButton}>Edit Profile</a>
+          <Link href="/profile/edit" className={css.editProfileButton}>
+            Edit Profile
+          </Link>
         </div>
 
         <div className={css.avatarWrapper}>
-          <img
-            src="https://ac.goit.global/img/no-user.png"
+          <Image
+            src={user.avatar || 'https://ac.goit.global/fullstack/react/default-avatar.jpg'}
             alt="User Avatar"
             width={120}
             height={120}
@@ -27,8 +42,8 @@ export default function ProfilePage() {
         </div>
 
         <div className={css.profileInfo}>
-          <p>Username: your_username</p>
-          <p>Email: your_email@example.com</p>
+          <p>Username: {user.username}</p>
+          <p>Email: {user.email}</p>
         </div>
       </div>
     </main>

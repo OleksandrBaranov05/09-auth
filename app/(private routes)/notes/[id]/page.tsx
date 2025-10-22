@@ -1,64 +1,47 @@
+// app/(private routes)/notes/[id]/page.tsx
 import type { Metadata } from 'next';
-import { fetchNoteById } from '@/lib/api/clientApi';
+import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query';
+import { sFetchNoteById } from '@/lib/api/serverApi';
+import NoteDetailsClient from './NoteDetails.client';
 
-const SITE_URL = 'https://notehub.app';
-
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}): Promise<Metadata> {
-  const { id } = await params;
-
+export async function generateMetadata(
+  props: Promise<{ params: { id: string } }>
+): Promise<Metadata> {
   try {
-    const note = await fetchNoteById(id);
-    const title = `${note.title} | NoteHub`;
-    const desc =
-      note.content.length > 140
-        ? `${note.content.slice(0, 137)}...`
-        : note.content || 'Note details';
-
+    const { params } = await props;
+    const note = await sFetchNoteById(params.id);
     return {
-      title,
-      description: desc,
+      title: `${note.title} — NoteHub`,
+      description: note.content.slice(0, 120),
       openGraph: {
-        title,
-        description: desc,
-        url: `${SITE_URL}/notes/${id}`,
-        images: [
-          {
-            url: 'https://ac.goit.global/fullstack/react/notehub-og-meta.jpg',
-            width: 1200,
-            height: 630,
-            alt: 'NoteHub',
-          },
-        ],
+        title: `${note.title} — NoteHub`,
+        description: note.content.slice(0, 120),
+        url: `/notes/${params.id}`,
+        images: ['https://ac.goit.global/fullstack/react/notehub-og-meta.jpg'],
       },
     };
   } catch {
-    const title = 'Note | NoteHub';
-    const desc = 'Note details';
     return {
-      title,
-      description: desc,
-      openGraph: {
-        title,
-        description: desc,
-        url: `${SITE_URL}/notes/${id}`,
-        images: [
-          {
-            url: 'https://ac.goit.global/fullstack/react/notehub-og-meta.jpg',
-            width: 1200,
-            height: 630,
-            alt: 'NoteHub',
-          },
-        ],
-      },
+      title: 'Note — NoteHub',
+      description: 'Note details',
     };
   }
 }
 
-export default function NotePage() {
-  // можеш показати простий fallback або переадресувати на /notes/filter/All
-  return null;
+export default async function NotePage(
+  props: Promise<{ params: { id: string } }>
+) {
+  const { params } = await props;
+  const qc = new QueryClient();
+
+  await qc.prefetchQuery({
+    queryKey: ['note', params.id],
+    queryFn: () => sFetchNoteById(params.id),
+  });
+
+  return (
+    <HydrationBoundary state={dehydrate(qc)}>
+      <NoteDetailsClient />
+    </HydrationBoundary>
+  );
 }
