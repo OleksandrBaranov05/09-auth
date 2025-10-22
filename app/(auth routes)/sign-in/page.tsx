@@ -11,21 +11,20 @@ export default function SignInPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
-  const setUser = useAuthStore((state) => state.setUser);
+  const setUser = useAuthStore((s) => s.setUser);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-
     try {
       const user = await login(email, password);
       setUser(user);
       router.push('/profile');
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       setError('Invalid credentials. Please try again.');
     }
-  };
+  }
 
   return (
     <main className={css.mainContent}>
@@ -34,34 +33,18 @@ export default function SignInPage() {
 
         <div className={css.formGroup}>
           <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            name="email"
-            className={css.input}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+          <input id="email" type="email" name="email" className={css.input}
+                 value={email} onChange={(e) => setEmail(e.target.value)} required />
         </div>
 
         <div className={css.formGroup}>
           <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            name="password"
-            className={css.input}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <input id="password" type="password" name="password" className={css.input}
+                 value={password} onChange={(e) => setPassword(e.target.value)} required />
         </div>
 
         <div className={css.actions}>
-          <button type="submit" className={css.submitButton}>
-            Log in
-          </button>
+          <button type="submit" className={css.submitButton}>Log in</button>
         </div>
 
         {error && <p className={css.error}>{error}</p>}

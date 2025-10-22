@@ -7,7 +7,7 @@ import AuthProvider from '@/components/AuthProvider/AuthProvider';
 
 export const metadata: Metadata = {
   title: 'NoteHub',
-  description: 'Notes application with authentication',
+  description: 'Notes application with auth',
 };
 
 export default function RootLayout({

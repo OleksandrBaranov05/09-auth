@@ -1,40 +1,58 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { checkSession } from '@/lib/api/clientApi';
+import { checkSession, logout } from '@/lib/api/clientApi';
 import { useAuthStore } from '@/lib/store/authStore';
+import { usePathname, useRouter } from 'next/navigation';
+
+const PRIVATE_PREFIXES = ['/notes', '/profile'];
+const PUBLIC_AUTH_PAGES = ['/sign-in', '/sign-up'];
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [loading, setLoading] = useState(true);
+  const [checking, setChecking] = useState(true);
+  const setUser = useAuthStore((s) => s.setUser);
+  const clearIsAuthenticated = useAuthStore((s) => s.clearIsAuthenticated);
   const router = useRouter();
   const pathname = usePathname();
-  const { setUser, clearIsAuthenticated, isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    const verify = async () => {
+    let isMounted = true;
+    (async () => {
       try {
         const user = await checkSession();
         if (user) {
+          if (!isMounted) return;
           setUser(user);
+
+          // якщо ми на /sign-in | /sign-up і вже залогінені — в профіль
+          if (PUBLIC_AUTH_PAGES.includes(pathname)) {
+            router.replace('/profile');
+          }
         } else {
+          if (!isMounted) return;
           clearIsAuthenticated();
-          if (pathname.startsWith('/notes') || pathname.startsWith('/profile')) {
-            router.push('/sign-in');
+
+          // якщо ми на приватній сторінці — в логін
+          if (PRIVATE_PREFIXES.some((p) => pathname.startsWith(p))) {
+            await logout().catch(() => {});
+            router.replace('/sign-in');
           }
         }
-      } catch (error) {
-        console.error('Auth check failed:', error);
+      } catch {
+        // якщо помилка — вважаємо неавторизований
         clearIsAuthenticated();
+        if (PRIVATE_PREFIXES.some((p) => pathname.startsWith(p))) {
+          router.replace('/sign-in');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) setChecking(false);
       }
-    };
+    })();
 
-    verify();
+    return () => { isMounted = false; };
   }, [pathname, router, setUser, clearIsAuthenticated]);
 
-  if (loading) return <p style={{ textAlign: 'center', marginTop: '2rem' }}>Loading...</p>;
+  if (checking) return <p style={{ padding: 16 }}>Checking session...</p>;
 
   return <>{children}</>;
 }

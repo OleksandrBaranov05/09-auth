@@ -1,27 +1,32 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
-  const token = request.cookies.get('notehub_token')?.value;
+const PRIVATE_PREFIXES = ['/notes', '/profile'];
+const PUBLIC_AUTH = ['/sign-in', '/sign-up'];
 
-  const isAuthRoute = request.nextUrl.pathname.startsWith('/sign-in') || 
-                      request.nextUrl.pathname.startsWith('/sign-up');
+export function middleware(req: NextRequest) {
+  const url = req.nextUrl.clone();
+  const isPrivate = PRIVATE_PREFIXES.some((p) => url.pathname.startsWith(p));
+  const isAuthPage = PUBLIC_AUTH.includes(url.pathname);
 
-  const isPrivateRoute = request.nextUrl.pathname.startsWith('/profile') || 
-                         request.nextUrl.pathname.startsWith('/notes');
+  // Куки від API routes будуть ставити session, перевіримо наявність
+  const hasSession = req.cookies.has('session'); // ім’я куки див. у вашій app/api реалізації
 
-  if (isPrivateRoute && !token) {
-    return NextResponse.redirect(new URL('/sign-in', request.url));
+  if (isPrivate && !hasSession) {
+    url.pathname = '/sign-in';
+    return NextResponse.redirect(url);
   }
 
- 
-  if (isAuthRoute && token) {
-    return NextResponse.redirect(new URL('/notes', request.url));
+  if (isAuthPage && hasSession) {
+    url.pathname = '/profile';
+    return NextResponse.redirect(url);
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/profile/:path*', '/notes/:path*', '/sign-in', '/sign-up'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+  ],
 };

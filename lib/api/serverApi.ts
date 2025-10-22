@@ -1,39 +1,44 @@
-import { api } from './api';
+import axios from 'axios';
+import { cookies } from 'next/headers';
 import type { Note } from '@/types/note';
 import type { User } from '@/types/user';
 
-function withCookieHeader(cookie?: string) {
-  return cookie ? { headers: { Cookie: cookie } } : undefined;
+// базовий URL бекенда (проксі на /api тут не підходить в SSG), але ми підемо теж через /api, додаючи cookie
+const baseURL = `${process.env.NEXT_PUBLIC_API_URL}/api`;
+
+function authHeaders() {
+  // Прокидаємо cookie з серверного контексту
+  const cookieStore = cookies();
+  const cookieHeader = cookieStore.toString();
+  return {
+    headers: {
+      Cookie: cookieHeader,
+    },
+    withCredentials: true,
+  };
 }
 
-export async function sFetchNotes(
-  params: { page: number; perPage: number; search?: string; tag?: string },
-  cookie?: string
-): Promise<{ notes: Note[]; totalPages: number }> {
-  const { page, perPage, search, tag } = params;
-  const qp = new URLSearchParams();
-  qp.set('page', String(page));
-  qp.set('perPage', String(perPage));
-  if (search) qp.set('search', search);
-  if (tag && tag !== 'All') qp.set('tag', tag);
-
-  const { data } = await api.get<{ notes: Note[]; totalPages: number }>(
-    `/notes?${qp.toString()}`, withCookieHeader(cookie)
+// NOTES
+export async function sFetchNotes(params: { page: number; perPage: number; search?: string; tag?: string; }) {
+  const res = await axios.get<{ notes: Note[]; totalPages: number }>(
+    `${baseURL}/notes`,
+    { ...authHeaders(), params }
   );
-  return data;
+  return res.data;
 }
 
-export async function sFetchNoteById(id: string, cookie?: string): Promise<Note> {
-  const { data } = await api.get<Note>(`/notes/${id}`, withCookieHeader(cookie));
-  return data;
+export async function sFetchNoteById(id: string) {
+  const res = await axios.get<Note>(`${baseURL}/notes/${id}`, authHeaders());
+  return res.data;
 }
 
-export async function sGetMe(cookie?: string): Promise<User> {
-  const { data } = await api.get<User>('/users/me', withCookieHeader(cookie));
-  return data;
+// USER / AUTH
+export async function sGetMe() {
+  const res = await axios.get<User>(`${baseURL}/users/me`, authHeaders());
+  return res.data;
 }
 
-export async function sCheckSession(cookie?: string): Promise<User | null> {
-  const { data } = await api.get<User | null>('/auth/session', withCookieHeader(cookie));
-  return data ?? null;
+export async function sCheckSession() {
+  const res = await axios.get<User | null>(`${baseURL}/auth/session`, authHeaders());
+  return res.data ?? null;
 }

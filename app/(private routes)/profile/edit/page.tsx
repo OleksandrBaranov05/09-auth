@@ -1,29 +1,27 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { getMe, updateMe } from '@/lib/api/clientApi';
-import type { User } from '@/types/user';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { updateMe, getMe } from '@/lib/api/clientApi';
 import css from './EditProfilePage.module.css';
 
 export default function EditProfilePage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [username, setUsername] = useState('');
+  // мінімально: локальний стан
+  const [username, setUsername] = useState('your_username');
+  const [email] = useState('your_email@example.com');
+  const [avatar] = useState('https://ac.goit.global/img/no-user.png');
 
-  useEffect(() => {
-    (async () => {
-      const me = await getMe();
-      setUser(me);
-      setUsername(me.username);
-    })();
-  }, []);
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    await updateMe({ username });
-    router.replace('/profile');
+    try {
+      await updateMe({ username });
+      router.push('/profile');
+    } catch (err) {
+      console.error(err);
+      // можна показати повідомлення
+    }
   }
 
   return (
@@ -31,15 +29,13 @@ export default function EditProfilePage() {
       <div className={css.profileCard}>
         <h1 className={css.formTitle}>Edit Profile</h1>
 
-        {user && (
-          <Image
-            src={user.avatar}
-            alt="User Avatar"
-            width={120}
-            height={120}
-            className={css.avatar}
-          />
-        )}
+        <Image
+          src={avatar}
+          alt="User Avatar"
+          width={120}
+          height={120}
+          className={css.avatar}
+        />
 
         <form className={css.profileInfo} onSubmit={onSubmit}>
           <div className={css.usernameWrapper}>
@@ -53,7 +49,7 @@ export default function EditProfilePage() {
             />
           </div>
 
-          <p>Email: {user?.email || '...'}</p>
+          <p>Email: {email}</p>
 
           <div className={css.actions}>
             <button type="submit" className={css.saveButton}>Save</button>
