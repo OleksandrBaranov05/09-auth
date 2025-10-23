@@ -8,15 +8,15 @@ import css from './AuthNavigation.module.css';
 
 export default function AuthNavigation() {
   const router = useRouter();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user = useAuthStore((s) => s.user);
+  const clearAuth = useAuthStore((s) => s.clearAuth);
 
-  // ✅ беремо clearAuth з стора, а не clearIsAuthenticated
-  const { isAuthenticated, user, clearAuth } = useAuthStore();
-
-  const onLogout = async () => {
+  const handleLogout = async () => {
     try {
       await logout();
     } finally {
-      clearAuth(); // тепер ця функція точно існує у сторі
+      clearAuth();
       router.replace('/sign-in');
     }
   };
@@ -25,12 +25,12 @@ export default function AuthNavigation() {
     return (
       <>
         <li className={css.navigationItem}>
-          <Link href="/sign-in" className={css.navigationLink}>
+          <Link href="/sign-in" prefetch={false} className={css.navigationLink}>
             Login
           </Link>
         </li>
         <li className={css.navigationItem}>
-          <Link href="/sign-up" className={css.navigationLink}>
+          <Link href="/sign-up" prefetch={false} className={css.navigationLink}>
             Sign up
           </Link>
         </li>
@@ -41,17 +41,13 @@ export default function AuthNavigation() {
   return (
     <>
       <li className={css.navigationItem}>
-        <Link href="/profile" className={css.navigationLink}>
+        <Link href="/profile" prefetch={false} className={css.navigationLink}>
           Profile
         </Link>
       </li>
       <li className={css.navigationItem}>
         <p className={css.userEmail}>{user?.email}</p>
-        <button
-          type="button"
-          onClick={onLogout}
-          className={css.logoutButton}
-        >
+        <button className={css.logoutButton} onClick={handleLogout}>
           Logout
         </button>
       </li>

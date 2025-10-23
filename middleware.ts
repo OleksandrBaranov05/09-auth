@@ -1,39 +1,67 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const PRIVATE_PREFIXES = ['/notes', '/profile'];
-const AUTH_PREFIXES = ['/sign-in', '/sign-up'];
+const AUTH_ROUTES = ['/sign-in', '/sign-up'];
 
-function isPrivate(url: string) {
-  return PRIVATE_PREFIXES.some((p) => url.startsWith(p));
-}
-function isAuth(url: string) {
-  return AUTH_PREFIXES.some((p) => url.startsWith(p));
-}
+export async function middleware(req: NextRequest) {
+  const { pathname, origin } = req.nextUrl;
 
-export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-  const access = req.cookies.get('accessToken')?.value;
+  const isPrivate = PRIVATE_PREFIXES.some((p) => pathname.startsWith(p));
+  const isAuthRoute = AUTH_ROUTES.includes(pathname);
 
-  // неавторизований → прийшов на приватну
-  if (!access && isPrivate(pathname)) {
-    const url = req.nextUrl.clone();
-    url.pathname = '/sign-in';
+  const cookieHeader = req.headers.get('cookie') || '';
+  const accessToken = req.cookies.get('accessToken')?.value;
+  const refreshToken = req.cookies.get('refreshToken')?.value;
+
+  // Якщо користувач уже авторизований — забороняємо доступ до /sign-in /sign-up
+  if (isAuthRoute && accessToken) {
+    const url = new URL('/', origin);
     return NextResponse.redirect(url);
   }
 
-  // авторизований → намагається відкрити /sign-in або /sign-up
-  if (access && isAuth(pathname)) {
-    const url = req.nextUrl.clone();
-    url.pathname = '/profile';
-    return NextResponse.redirect(url);
+  if (!isPrivate) {
+    return NextResponse.next();
   }
 
-  return NextResponse.next();
+  // Приватний маршрут
+  if (accessToken) {
+    return NextResponse.next();
+  }
+
+  // Немає accessToken, але є refreshToken — спроба поновити сесію
+  if (!accessToken && refreshToken) {
+    try {
+      const res = await fetch(`${origin}/api/auth/session`, {
+        method: 'GET',
+        headers: { cookie: cookieHeader },
+      });
+
+      // Якщо бек повернув оновлені токени (Set-Cookie), прокинемо їх у відповідь
+      if (res.ok) {
+        const next = NextResponse.next();
+
+        const setCookieHeader = res.headers.get('set-cookie');
+        if (setCookieHeader) {
+          // У відповідях може бути кілька Set-Cookie — розіб’ємо.
+          const cookies = setCookieHeader.split(/,(?=\s*[a-zA-Z0-9_\-]+=)/g);
+          cookies.forEach((c) => next.headers.append('set-cookie', c));
+        }
+        return next;
+      }
+    } catch {
+      // ігноруємо і впадемо на редірект нижче
+    }
+  }
+
+  // Неавторизований — на логін
+  const url = new URL('/sign-in', origin);
+  url.searchParams.set('from', pathname);
+  return NextResponse.redirect(url);
 }
 
 export const config = {
   matcher: [
-    // усі, крім статичних
-    '/((?!_next/static|_next/image|favicon.ico|images/|api/).*)',
+    // усе, окрім статичних файлів і _next
+    '/((?!_next/static|_next/image|favicon.ico|images|fonts|public).*)',
   ],
 };

@@ -12,20 +12,27 @@ export default function NotePreview({ id }: { id: string }) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['note', id],
     queryFn: () => fetchNoteById(id),
-    retry: false,
-    refetchOnMount: false,
   });
 
+  const close = () => router.back();
+
   return (
-    <Modal onClose={() => router.back()}>
-      {isLoading && <p>Loading…</p>}
-      {isError && <p>Failed to load note.</p>}
-      {data && (
-        <article className={css.note}>
-          <h2 className={css.title}>{data.title}</h2>
-          <p className={css.content}>{data.content}</p>
-        </article>
-      )}
+    <Modal onClose={close}>
+      <div className={css.wrapper}>
+        <button className={css.closeBtn} onClick={close} type="button">
+          Close
+        </button>
+
+        {isLoading && <p>Loading…</p>}
+        {isError && <p>Failed to load note.</p>}
+        {data && (
+          <article>
+            <h2>{data.title}</h2>
+            <p>{data.content}</p>
+            <p><strong>Tag:</strong> {data.tag}</p>
+          </article>
+        )}
+      </div>
     </Modal>
   );
 }
