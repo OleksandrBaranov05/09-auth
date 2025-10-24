@@ -1,3 +1,4 @@
+// app/layout.tsx
 import type { Metadata } from 'next';
 import './globals.css';
 import Header from '@/components/Header/Header';
@@ -12,10 +13,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-  modal,
 }: {
   children: React.ReactNode;
-  modal: React.ReactNode;
 }) {
   return (
     <html lang="en">
@@ -24,7 +23,6 @@ export default function RootLayout({
           <AuthProvider>
             <Header />
             {children}
-            {modal}
             <Footer />
           </AuthProvider>
         </TanStackProvider>

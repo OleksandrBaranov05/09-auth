@@ -1,38 +1,36 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import type { Note } from '@/types/note';
 import { fetchNoteById } from '@/lib/api/clientApi';
-import Modal from '@/components/Modal/Modal';
 import css from './modal-note.module.css';
+import { useRouter } from 'next/navigation';
 
 export default function NotePreview({ id }: { id: string }) {
-  const router = useRouter();
-
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, error } = useQuery<Note>({
     queryKey: ['note', id],
     queryFn: () => fetchNoteById(id),
   });
+  const router = useRouter();
 
-  const close = () => router.back();
+  if (isLoading) return <p>Loading…</p>;
+  if (error || !data) return <p>Failed to load note</p>;
 
   return (
-    <Modal onClose={close}>
-      <div className={css.wrapper}>
-        <button className={css.closeBtn} onClick={close} type="button">
-          Close
-        </button>
+    <div className={css.wrapper}>
+      <button onClick={() => router.back()} className={css.closeBtn}>
+        ✕ Close
+      </button>
 
-        {isLoading && <p>Loading…</p>}
-        {isError && <p>Failed to load note.</p>}
-        {data && (
-          <article>
-            <h2>{data.title}</h2>
-            <p>{data.content}</p>
-            <p><strong>Tag:</strong> {data.tag}</p>
-          </article>
-        )}
-      </div>
-    </Modal>
+      <article className={css.item}>
+        <header className={css.header}>
+          <h2>{data.title}</h2>
+        </header>
+
+        <div className={css.content}>{data.content}</div>
+
+        <p className={css.date}>Tag: {data.tag}</p>
+      </article>
+    </div>
   );
 }
