@@ -1,10 +1,13 @@
+import type { ReactNode } from 'react';
+
 export default function PrivateLayout({
   children,
   modal,
 }: {
-  children: React.ReactNode;
-  modal: React.ReactNode;
+  children: ReactNode;
+  modal: ReactNode;
 }) {
+
   return (
     <>
       {children}
