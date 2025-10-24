@@ -1,36 +1,46 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import type { Note } from '@/types/note';
 import { fetchNoteById } from '@/lib/api/clientApi';
+import type { Note } from '@/types/note';
+import Modal from '@/components/Modal/Modal';
 import css from './modal-note.module.css';
-import { useRouter } from 'next/navigation';
 
 export default function NotePreview({ id }: { id: string }) {
   const { data, isLoading, error } = useQuery<Note>({
     queryKey: ['note', id],
     queryFn: () => fetchNoteById(id),
   });
-  const router = useRouter();
 
-  if (isLoading) return <p>Loading…</p>;
-  if (error || !data) return <p>Failed to load note</p>;
+  if (isLoading)
+    return (
+      <Modal>
+        <p>Loading…</p>
+      </Modal>
+    );
+
+  if (error || !data)
+    return (
+      <Modal>
+        <p>Failed to load note.</p>
+      </Modal>
+    );
 
   return (
-    <div className={css.wrapper}>
-      <button onClick={() => router.back()} className={css.closeBtn}>
-        ✕ Close
-      </button>
+    <Modal>
+      <div className={css.wrapper}>
+        <article className={css.item}>
+          <header className={css.header}>
+            <h2>{data.title}</h2>
+          </header>
 
-      <article className={css.item}>
-        <header className={css.header}>
-          <h2>{data.title}</h2>
-        </header>
+          <p className={css.content}>{data.content}</p>
 
-        <div className={css.content}>{data.content}</div>
-
-        <p className={css.date}>Tag: {data.tag}</p>
-      </article>
-    </div>
+          <div className={css.footer}>
+            <span className={css.tag}>Tag: {data.tag}</span>
+          </div>
+        </article>
+      </div>
+    </Modal>
   );
 }
