@@ -4,30 +4,35 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchNoteById } from '@/lib/api/clientApi';
 import type { Note } from '@/types/note';
 import Modal from '@/components/Modal/Modal';
-import css from './modal-note.module.css';
+import css from './NotePreview.module.css';
+import { useRouter } from 'next/navigation';
 
 export default function NotePreview({ id }: { id: string }) {
+  const router = useRouter();
+
   const { data, isLoading, error } = useQuery<Note>({
     queryKey: ['note', id],
     queryFn: () => fetchNoteById(id),
   });
 
+  const handleClose = () => router.back(); // ✅ передається в Modal
+
   if (isLoading)
     return (
-      <Modal>
+      <Modal onClose={handleClose}>
         <p>Loading…</p>
       </Modal>
     );
 
   if (error || !data)
     return (
-      <Modal>
+      <Modal onClose={handleClose}>
         <p>Failed to load note.</p>
       </Modal>
     );
 
   return (
-    <Modal>
+    <Modal onClose={handleClose}>
       <div className={css.wrapper}>
         <article className={css.item}>
           <header className={css.header}>

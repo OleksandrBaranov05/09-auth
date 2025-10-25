@@ -12,7 +12,6 @@
 .header {
   border-bottom: 1px solid #dee2e6;
   margin-bottom: 8px;
-  
 }
 
 .content {
@@ -24,7 +23,11 @@
   font-size: 12px;
   color: #6c757d;
 }
-.wrapper { padding: 16px; }
+
+.wrapper {
+  padding: 16px;
+}
+
 .closeBtn {
   margin-left: auto;
   display: inline-block;
@@ -34,4 +37,7 @@
   background: #f8f9fa;
   cursor: pointer;
 }
-.closeBtn:hover { background: #e9ecef; }
+
+.closeBtn:hover {
+  background: #e9ecef;
+}
